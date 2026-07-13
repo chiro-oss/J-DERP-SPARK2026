@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Tailwind CSS Play CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Chart.js (untuk grafik) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Leaflet (untuk peta interaktif) -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <title>J-DERP Prototype Versi 1.5 - Arsitektur DPI</title>
+    <style>
+      /* Animasi Aliran Data Lintasan Pulsa */
+      @keyframes dataFlow {
+        0% {
+          transform: translateY(-20px);
+          opacity: 0;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(60px);
+          opacity: 0;
+        }
+      }
+      .data-pulse {
+        animation: dataFlow 2s linear infinite;
+      }
+      /* Mengatur z-index bawaan pop-up leaflet agar di bawah Widget AI */
+      .leaflet-popup-pane {
+        z-index: 40 !important;
+      }
+      /* Kustomisasi gaya teks tooltip Leaflet agar menyatu dengan peta */
+      .custom-map-label {
+        background: transparent !important;
+        color: #ffffff !important;
+        font-weight: 800 !important;
+        font-size: 11px !important;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9), 0 0 2px rgba(0, 0, 0, 0.9) !important;
+        border: none !important;
+        box-shadow: none !important;
+        white-space: normal !important;
+        text-align: center !important;
+        width: 80px !important;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-slate-900 text-white flex flex-col h-screen select-none font-sans"
+  >
+    <!-- Navbar Atas -->
+    <nav
+      class="bg-slate-800 px-6 py-3 flex items-center justify-between shadow-lg border-b border-slate-700"
+    >
+      <div class="flex items-center space-x-4">
+        <div class="w-3 h-3 rounded-full bg-sky-500 animate-pulse"></div>
+        <span
+          class="text-xl font-bold tracking-wider bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent"
+        >
+          J-DERP: DIGITAL ECONOMIC RESILIENCE PLATFORM
+        </span>
+      </div>
+      <div
+        class="flex items-center space-x-3 text-xs font-semibold text-slate-400"
+      >
+        <span
+          class="px-2.5 py-1 bg-slate-900 rounded-md border border-slate-700 text-sky-400"
+          >DPI ARCHITECTURE</span
+        >
+        <span
+          class="px-2.5 py-1 bg-slate-900 rounded-md border border-slate-700 text-emerald-400"
+          >PROV. JAMBI</span
+        >
+      </div>
+    </nav>
+
+    <div class="flex flex-1 overflow-hidden">
+      <!-- Sidebar Menu -->
+      <aside
+        class="w-64 bg-slate-800 p-4 space-y-2 border-r border-slate-700 flex flex-col justify-between"
+      >
+        <div class="space-y-2">
+          <div
+            class="px-3 py-2 text-xs font-bold text-slate-400 uppercase tracking-widest"
+          >
+            Menu Navigasi
+          </div>
+          <button
+            data-tab="dashboard"
+            class="w-full text-left px-3 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition-all duration-200 cursor-pointer font-medium text-sm flex items-center justify-between"
+          >
+            <span>Dashboard Utama</span>
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          </button>
+          <button
+            data-tab="integration-center"
+            class="w-full text-left px-3 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition-all duration-200 cursor-pointer font-medium text-sm flex items-center justify-between"
+          >
+            <span>Data Integration Center</span>
+            <span
+              class="text-[10px] bg-sky-600/30 text-sky-400 px-1.5 py-0.5 rounded border border-sky-500/30"
+              >Engine</span
+            >
+          </button>
+        </div>
+
+        <!-- Status Engine Minimalis -->
+        <div
+          class="p-3 bg-slate-900/60 rounded-lg border border-slate-700 text-center"
+        >
+          <span class="text-[10px] text-slate-400 block mb-1"
+            >INTEGRATION CORE STATUS</span
+          >
+          <span class="text-xs text-emerald-400 font-mono font-bold"
+            >🟢 SYNCHRONIZED</span
+          >
+        </div>
+      </aside>
+
+      <!-- Konten Utama -->
+      <main class="flex-1 p-6 overflow-auto bg-slate-900/40 relative">
+        <!-- ================= SECTION 1: DASHBOARD UTAMA ================= -->
+        <section id="dashboard" class="tab-content hidden">
+          <h2
+            class="text-2xl font-bold mb-4 flex items-center gap-2 text-slate-100"
+          >
+            <span>Dashboard Analisis Kerentanan Ekonomi</span>
+          </h2>
+
+          <!-- Kartu Traffic Light -->
+          <div class="grid grid-cols-3 gap-4 mb-6">
+            <div
+              class="bg-rose-600/90 border border-rose-500 p-4 rounded-xl shadow-lg"
+            >
+              <h3 class="font-bold text-lg flex items-center justify-between">
+                <span>STATUS MERAH</span>
+                <span class="px-2 py-0.5 bg-rose-900/60 text-xs rounded"
+                  >Anomali</span
+                >
+              </h3>
+              <p class="text-sm opacity-90 mt-2">
+                Cabai Rawit & Bawang Merah – Lonjakan Harga Lintas Batas (+35%)
+              </p>
+              <button
+                class="mt-4 bg-rose-900 hover:bg-rose-950 active:scale-95 text-xs px-3 py-2 rounded-lg transition-all cursor-pointer font-medium border border-rose-700 shadow"
+                onclick="alert('[Diskominfo] WhatsApp alert broadcast ke Satgas Pangan Provinsi Jambi berhasil dikirim!')"
+              >
+                📡 Kirim Notif. WhatsApp Satgas
+              </button>
+            </div>
+            <div
+              class="bg-amber-500/90 border border-amber-400 p-4 rounded-xl shadow-lg"
+            >
+              <h3 class="font-bold text-lg flex items-center justify-between">
+                <span>STATUS KUNING</span>
+                <span class="px-2 py-0.5 bg-amber-700/60 text-xs rounded"
+                  >Waspada</span
+                >
+              </h3>
+              <p class="text-sm opacity-90 mt-2">
+                Beras Premium – Defisit Stok di 3 Gudang Distributor Wilayah
+                Barat
+              </p>
+            </div>
+            <div
+              class="bg-emerald-500/90 border border-emerald-400 p-4 rounded-xl shadow-lg"
+            >
+              <h3 class="font-bold text-lg flex items-center justify-between">
+                <span>STATUS HIJAU</span>
+                <span class="px-2 py-0.5 bg-emerald-700/60 text-xs rounded"
+                  >Aman</span
+                >
+              </h3>
+              <p class="text-sm opacity-90 mt-2">
+                Daging Sapi, Minyak Goreng, & Gula Pasir – Suplai & Pasokan
+                Stabil
+              </p>
+            </div>
+          </div>
+
+          <!-- Peta Wilayah Interaktif Leaflet.js -->
+          <h3 class="text-xl font-semibold mb-3 text-slate-200">
+            Peta Spasial Kerentanan Ekonomi Provinsi Jambi
+          </h3>
+          <div
+            id="map"
+            class="w-full h-[450px] rounded-xl shadow-lg border border-slate-700 bg-slate-950 mb-4 z-10"
+          ></div>
+
+          <!-- Panel Detail Spasial Modul -->
+          <div
+            id="district-info"
+            class="bg-slate-800 p-4 rounded-xl shadow border border-slate-700"
+          >
+            <h4 id="dist-name" class="font-bold text-sky-400 text-lg">
+              Arahkan kursor atau klik wilayah peta
+            </h4>
+            <p id="dist-status" class="text-sm font-semibold mt-1">
+              Status: <span class="text-slate-400">-</span>
+            </p>
+            <p id="dist-data" class="text-sm text-slate-300 mt-1">
+              Detail anomali komoditas pangan daerah akan dimuat otomatis.
+            </p>
+          </div>
+        </section>
+
+        <!-- ================= SECTION 2: DATA INTEGRATION CENTER (CORE) ================= -->
+        <section id="integration-center" class="tab-content hidden">
+          <!-- View Kontainer Utama (Grid Kartu Instansi) -->
+          <div id="integration-grid-view">
+            <div class="mb-6">
+              <h2 class="text-2xl font-bold text-slate-100">
+                Data Integration Center
+              </h2>
+              <p class="text-sm text-slate-400 mt-1">
+                Manajemen gerbang API integrasi otomatis arsitektur Satu Data
+                Ekonomi Makro Provinsi Jambi.
+              </p>
+            </div>
+
+            <!-- Grid Kartu Instansi -->
+            <div class="grid grid-cols-3 gap-5">
+              <!-- KARTU BPS -->
+              <div
+                class="bg-slate-800 border border-slate-700 p-5 rounded-xl flex flex-col justify-between shadow-lg hover:border-sky-500 transition-all group"
+              >
+                <div>
+                  <div class="flex items-center justify-between mb-3">
+                    <h3
+                      class="text-lg font-bold group-hover:text-sky-400 transition-colors"
+                    >
+                      BPS PROVINSI JAMBI
+                    </h3>
+                    <span
+                      class="px-2 py-0.5 bg-emerald-900/60 text-emerald-400 border border-emerald-700/50 rounded text-[10px] font-mono font-bold"
+                      >🟢 CONNECTED</span
+                    >
+                  </div>
+                  <div class="space-y-1.5 my-4 text-xs text-slate-300">
+                    <p class="flex justify-between">
+                      <span>Dataset Terhubung:</span>
+                      <span class="font-bold text-white">28 Dataset</span>
+                    </p>
+                    <p class="flex justify-between">
+                      <span>Update Terakhir:</span>
+                      <span class="font-mono text-slate-400">09:15 WIB</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onclick="openInstansiDetail('bps')"
+                  class="w-full bg-slate-700 hover:bg-sky-600 text-white font-medium text-xs py-2 rounded-lg cursor-pointer transition-all shadow-md"
+                >
+                  Masuk Modul Integrasi
+                </button>
+              </div>
+
+              <!-- KARTU BI -->
+              <div
+                class="bg-slate-800 border border-slate-700 p-5 rounded-xl flex flex-col justify-between shadow-lg hover:border-sky-500 transition-all group"
+              >
+                <div>
+                  <div class="flex items-center justify-between mb-3">
+                    <h3
+                      class="text-lg font-bold group-hover:text-sky-400 transition-colors"
+                    >
+                      BANK INDONESIA (KPw)
+                    </h3>
+                    <span
+                      class="px-2 py-0.5 bg-emerald-900/60 text-emerald-400 border border-emerald-700/50 rounded text-[10px] font-mono font-bold"
+                      >🟢 ONLINE</span
+                    >
+                  </div>
+                  <div class="space-y-1.5 my-4 text-xs text-slate-300">
+                    <p class="flex justify-between">
+                      <span>Dataset Terhubung:</span>
+                      <span class="font-bold text-white">18 Dataset</span>
+                    </p>
+                    <p class="flex justify-between">
+                      <span>Update Terakhir:</span>
+                      <span class="font-mono text-slate-400">09:00 WIB</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onclick="openInstansiDetail('bi')"
+                  class="w-full bg-slate-700 hover:bg-sky-600 text-white font-medium text-xs py-2 rounded-lg cursor-pointer transition-all shadow-md"
+                >
+                  Masuk Modul Integrasi
+                </button>
+              </div>
+
+              <!-- KARTU DISPERINDAG -->
+              <div
+                class="bg-slate-800 border border-slate-700 p-5 rounded-xl flex flex-col justify-between shadow-lg hover:border-sky-500 transition-all group"
+              >
+                <div>
+                  <div class="flex items-center justify-between mb-3">
+                    <h3
+                      class="text-lg font-bold group-hover:text-sky-400 transition-colors"
+                    >
+                      DISPERINDAG
+                    </h3>
+                    <span
+                      class="px-2 py-0.5 bg-emerald-900/60 text-emerald-400 border border-emerald-700/50 rounded text-[10px] font-mono font-bold"
+                      >🟢 LIVE FEED</span
+                    >
+                  </div>
+                  <div class="space-y-1.5 my-4 text-xs text-slate-300">
+                    <p class="flex justify-between">
+                      <span>Dataset Terhubung:</span>
+                      <span class="font-bold text-white">12 Dataset</span>
+                    </p>
+                    <p class="flex justify-between">
+                      <span>Update Terakhir:</span>
+                      <span class="font-mono text-slate-400">08:00 WIB</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onclick="openInstansiDetail('perindag')"
+                  class="w-full bg-slate-700 hover:bg-sky-600 text-white font-medium text-xs py-2 rounded-lg cursor-pointer transition-all shadow-md"
+                >
+                  Masuk Modul Integrasi
+                </button>
+              </div>
+
+              <!-- KARTU BRIDA -->
+              <div
+                class="bg-slate-800 border border-slate-700 p-5 rounded-xl flex flex-col justify-between shadow-lg hover:border-sky-500 transition-all group"
+              >
+                <div>
+                  <div class="flex items-center justify-between mb-3">
+                    <h3
+                      class="text-lg font-bold group-hover:text-sky-400 transition-colors"
+                    >
+                      BRIDA PROVINSI
+                    </h3>
+                    <span
+                      class="px-2 py-0.5 bg-emerald-900/60 text-emerald-400 border border-emerald-700/50 rounded text-[10px] font-mono font-bold"
+                      >🟢 ATTACHED</span
+                    >
+                  </div>
+                  <div class="space-y-1.5 my-4 text-xs text-slate-300">
+                    <p class="flex justify-between">
+                      <span>Database Penelitian:</span>
+                      <span class="font-bold text-white">145 Dokumen</span>
+                    </p>
+                    <p class="flex justify-between">
+                      <span>Update Terakhir:</span>
+                      <span class="font-mono text-slate-400">Kemarin</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onclick="openInstansiDetail('brida')"
+                  class="w-full bg-slate-700 hover:bg-sky-600 text-white font-medium text-xs py-2 rounded-lg cursor-pointer transition-all shadow-md"
+                >
+                  Masuk Modul Integrasi
+                </button>
+              </div>
+
+              <!-- KARTU BAPPEDA -->
+              <div
+                class="bg-slate-800 border border-slate-700 p-5 rounded-xl flex flex-col justify-between shadow-lg hover:border-sky-500 transition-all group"
+              >
+                <div>
+                  <div class="flex items-center justify-between mb-3">
+                    <h3
+                      class="text-lg font-bold group-hover:text-sky-400 transition-colors"
+                    >
+                      BAPPEDA
+                    </h3>
+                    <span
+                      class="px-2 py-0.5 bg-emerald-900/60 text-emerald-400 border border-emerald-700/50 rounded text-[10px] font-mono font-bold"
+                      >🟢 SYNCED</span
+                    >
+                  </div>
+                  <div class="space-y-1.5 my-4 text-xs text-slate-300">
+                    <p class="flex justify-between">
+                      <span>Matriks Program:</span>
+                      <span class="font-bold text-white">4 Prioritas</span>
+                    </p>
+                    <p class="flex justify-between">
+                      <span>Update Terakhir:</span>
+                      <span class="font-mono text-slate-400">13 Juli 2026</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onclick="openInstansiDetail('bappeda')"
+                  class="w-full bg-slate-700 hover:bg-sky-600 text-white font-medium text-xs py-2 rounded-lg cursor-pointer transition-all shadow-md"
+                >
+                  Masuk Modul Integrasi
+                </button>
+              </div>
+
+              <!-- KARTU DISKOMINFO -->
+              <div
+                class="bg-slate-800 border border-slate-700 p-5 rounded-xl flex flex-col justify-between shadow-lg hover:border-sky-500 transition-all group"
+              >
+                <div>
+                  <div class="flex items-center justify-between mb-3">
+                    <h3
+                      class="text-lg font-bold group-hover:text-sky-400 transition-colors"
+                    >
+                      DISKOMINFO
+                    </h3>
+                    <span
+                      class="px-2 py-0.5 bg-emerald-900/60 text-emerald-400 border border-emerald-700/50 rounded text-[10px] font-mono font-bold"
+                      >🟢 HOSTING RUN</span
+                    >
+                  </div>
+                  <div class="space-y-1.5 my-4 text-xs text-slate-300">
+                    <p class="flex justify-between">
+                      <span>Core Node Server:</span>
+                      <span class="font-bold text-white">Node Utama</span>
+                    </p>
+                    <p class="flex justify-between">
+                      <span>Bandwidth Stream:</span>
+                      <span class="font-mono text-slate-400">1.4 Gbps</span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onclick="openInstansiDetail('diskominfo')"
+                  class="w-full bg-slate-700 hover:bg-sky-600 text-white font-medium text-xs py-2 rounded-lg cursor-pointer transition-all shadow-md"
+                >
+                  Masuk Modul Integrasi
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- View Kontainer Detail Halaman Instansi -->
+          <div id="integration-detail-view" class="hidden">
+            <button
+              onclick="closeInstansiDetail()"
+              class="mb-5 text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg font-medium cursor-pointer border border-slate-700 flex items-center gap-2"
+            >
+              ⬅ Kembali ke Menu Utama Instansi
+            </button>
+
+            <!-- Layout 2 Kolom Detail -->
+            <div class="grid grid-cols-12 gap-6">
+              <div
+                id="detail-card-info"
+                class="col-span-7 bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl"
+              >
+                <!-- Dinamis Terisi oleh Script JavaScript -->
+              </div>
+
+              <div class="col-span-5 flex flex-col gap-4">
+                <div
+                  class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl flex flex-col items-center justify-center relative min-h-[380px]"
+                >
+                  <h4
+                    class="text-sm font-bold text-slate-400 absolute top-4 tracking-wider"
+                  >
+                    LIVE DATA FLOW PIPELINE
+                  </h4>
+
+                  <div
+                    class="flex flex-col items-center space-y-3 mt-6 z-10 w-full max-w-[200px]"
+                  >
+                    <div
+                      id="flow-source"
+                      class="w-full text-center bg-sky-600 px-3 py-2 rounded-lg text-xs font-bold shadow-md border border-sky-400/40"
+                    >
+                      Instansi Sumber
+                    </div>
+                    <div
+                      class="h-10 w-0.5 bg-dashed border border-slate-600 relative flex justify-center"
+                    >
+                      <div
+                        class="w-2 h-2 rounded-full bg-cyan-400 absolute data-pulse"
+                      ></div>
+                    </div>
+                    <div
+                      class="w-full text-center bg-slate-700 px-3 py-2 rounded-lg text-xs font-bold border border-slate-600"
+                    >
+                      J-DERP API Gateway
+                    </div>
+                    <div
+                      class="h-10 w-0.5 bg-dashed border border-slate-600 relative flex justify-center"
+                    >
+                      <div
+                        class="w-2 h-2 rounded-full bg-emerald-400 absolute data-pulse"
+                        style="animation-delay: 0.7s"
+                      ></div>
+                    </div>
+                    <div
+                      class="w-full text-center bg-slate-900 px-3 py-2 rounded-lg text-xs font-bold border border-slate-700"
+                    >
+                      Integration Engine
+                    </div>
+                    <div
+                      class="h-10 w-0.5 bg-dashed border border-slate-600 relative flex justify-center"
+                    >
+                      <div
+                        class="w-2 h-2 rounded-full bg-amber-400 absolute data-pulse"
+                        style="animation-delay: 1.4s"
+                      ></div>
+                    </div>
+                    <div
+                      class="w-full text-center bg-emerald-600 px-3 py-2 rounded-lg text-xs font-bold shadow-md border border-emerald-400/40"
+                    >
+                      Dashboard J-DERP
+                    </div>
+                  </div>
+                  <div
+                    class="absolute inset-0 bg-radial from-transparent to-slate-900/40 opacity-40 rounded-2xl pointer-events-none"
+                  ></div>
+                </div>
+
+                <div
+                  id="detail-card-portal"
+                  class="bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-md flex justify-between items-center"
+                >
+                  <!-- Konten Tombol Dinamis Eksternal Link -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Widget Chat AI Pelengkap (Bisa Digeser & Di-minimize) -->
+        <div
+          id="chat-widget"
+          class="fixed bottom-4 right-4 w-72 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-50 flex flex-col transition-[height] duration-200"
+        >
+          <!-- Header Kotak -->
+          <div
+            id="chat-widget-header"
+            class="p-3 bg-slate-800 border-b border-slate-700 rounded-t-xl flex items-center justify-between cursor-move select-none"
+          >
+            <h4
+              class="font-bold text-sm flex items-center text-emerald-400 pointer-events-none"
+            >
+              <span
+                class="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse"
+              ></span>
+              Asisten J-DERP AI
+            </h4>
+            <button
+              id="minimize-btn"
+              class="text-slate-400 hover:text-white text-xs px-2 py-0.5 rounded bg-slate-700/50 hover:bg-slate-700 border border-slate-600/30 cursor-pointer font-bold"
+            >
+              −
+            </button>
+          </div>
+
+          <!-- Konten Utama Chat -->
+          <div id="chat-widget-content" class="p-4 flex flex-col flex-1">
+            <div
+              id="chat-messages"
+              class="h-24 overflow-y-auto p-2 bg-slate-900 text-xs rounded-lg mb-2 space-y-2 border border-slate-700/50"
+            >
+              <div class="p-1 text-slate-400">
+                Halo! Saya asisten J-DERP. Ada ketahanan pangan/ekonomi yang
+                perlu dibahas?
+              </div>
+            </div>
+            <input
+              id="chat-input"
+              type="text"
+              class="w-full px-2 py-1.5 mb-2 bg-slate-700 border border-slate-600 text-white text-xs rounded focus:outline-none focus:border-emerald-500 transition-colors"
+              placeholder="Tulis pertanyaan..."
+            />
+            <div class="grid grid-cols-2 gap-1">
+              <button
+                id="send-btn"
+                class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-[10px] py-1.5 font-medium rounded transition-all cursor-pointer"
+              >
+                Kirim
+              </button>
+              <button
+                id="recommend-btn"
+                class="bg-amber-600 hover:bg-amber-500 active:scale-95 text-white text-[10px] py-1.5 font-medium rounded transition-all cursor-pointer"
+              >
+                Rekomendasi
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- ================= SYSTEM CORE JAVASCRIPT ENGINE ================= -->
+    <script>
+      // Management Navigasi Tab Utama
+      const sidebarButtons = document.querySelectorAll("[data-tab]");
+      const tabContents = document.querySelectorAll(".tab-content");
+
+      function switchMainTab(targetTab) {
+        tabContents.forEach((sec) => sec.classList.add("hidden"));
+
+        sidebarButtons.forEach((btn) => {
+          btn.classList.remove("bg-sky-600", "hover:bg-sky-500");
+          btn.classList.add("bg-slate-700", "hover:bg-slate-600");
+        });
+
+        const activeContent = document.getElementById(targetTab);
+        if (activeContent) activeContent.classList.remove("hidden");
+
+        const activeBtn = document.querySelector(`[data-tab="${targetTab}"]`);
+        if (activeBtn) {
+          activeBtn.classList.remove("bg-slate-700", "hover:bg-slate-600");
+          activeBtn.classList.add("bg-sky-600", "hover:bg-sky-500");
+        }
+
+        // Pemicu rendering ulang peta spasial jika tab dashboard aktif
+        if (targetTab === "dashboard") {
+          refreshMapLayout();
+        }
+
+        if (targetTab === "integration-center") {
+          closeInstansiDetail();
+        }
+      }
+
+      sidebarButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          switchMainTab(btn.getAttribute("data-tab"));
+        });
+      });
+
+      // ================= LOGIKA INTERAKTIVITAS PETA GEOSPASIAL JAMBI =================
+      const map = L.map("map", {
+        center: [-1.6116, 102.7758],
+        zoom: 8,
+        zoomControl: true,
+      });
+
+      L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        {
+          attribution: "&copy; OpenStreetMap &copy; CARTO",
+        }
+      ).addTo(map);
+
+      const wilayahData = {
+        "Kabupaten Kerinci": {
+          status: "MERAH",
+          warna: "#e11d48",
+          info: "Cabai Rawit & Bawang Merah melonjak tajam (+35%) akibat kendala logistik hilir.",
+        },
+        "Kabupaten Muaro Jambi": {
+          status: "MERAH",
+          warna: "#e11d48",
+          info: "Komoditas bawang merah mengalami gagal panen lokal parsial, stok kritis.",
+        },
+        "Kabupaten Merangin": {
+          status: "KUNING",
+          warna: "#f59e0b",
+          info: "Beras Premium – Pasokan menipis di tingkat pedagang eceran gudang barat.",
+        },
+        "Kabupaten Tanjung Jabung Barat": {
+          status: "KUNING",
+          warna: "#f59e0b",
+          info: "Harga minyak goreng curah merangkak naik mendekati HET regional.",
+        },
+        "Kabupaten Bungo": {
+          status: "HIJAU",
+          warna: "#10b981",
+          info: "Seluruh komoditas pokok pangan terpantau aman terkendali dan pasokan surplus.",
+        },
+        "Kota Jambi": {
+          status: "HIJAU",
+          warna: "#10b981",
+          info: "Fluktuasi harga daging sapi & minyak goreng stabil via intervensi pasar murah.",
+        },
+        "Kabupaten Tebo": {
+          status: "HIJAU",
+          warna: "#10b981",
+          info: "Stok beras dan jagung stabil, distribusi rantai pasok aman.",
+        },
+        "Kabupaten Sarolangun": {
+          status: "KUNING",
+          warna: "#f59e0b",
+          info: "Gula pasir mengalami sedikit hambatan pasokan dari distributor utama.",
+        },
+        "Kabupaten Batang Hari": {
+          status: "HIJAU",
+          warna: "#10b981",
+          info: "Harga daging ayam ras dan telur ayam normal cenderung turun.",
+        },
+        "Kabupaten Tanjung Jabung Timur": {
+          status: "HIJAU",
+          warna: "#10b981",
+          info: "Komoditas perikanan dan pangan pokok stabil berkat panen lokal.",
+        },
+      };
+
+      // Koordinat Mock Polygon Batas Wilayah Jambi yang Disesuaikan Posisinya
+      const jambiGeoJSON = {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            properties: {name: "Kabupaten Kerinci"},
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [101.0, -2.0],
+                  [101.5, -1.8],
+                  [101.7, -2.4],
+                  [101.2, -2.6],
+                  [101.0, -2.0],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {name: "Kabupaten Bungo"},
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [101.4, -1.6],
+                  [102.1, -1.4],
+                  [102.0, -1.9],
+                  [101.5, -2.0],
+                  [101.4, -1.6],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {name: "Kabupaten Tebo"},
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [102.0, -1.4],
+                  [102.6, -1.1],
+                  [102.7, -1.6],
+                  [102.0, -1.9],
+                  [102.0, -1.4],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {name: "Kabupaten Merangin"},
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [101.7, -2.0],
+                  [102.4, -2.1],
+                  [102.2, -2.6],
+                  [101.5, -2.5],
+                  [101.7, -2.0],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {name: "Kabupaten Sarolangun"},
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [102.2, -2.3],
+                  [103.0, -2.4],
+                  [102.8, -2.8],
+                  [102.2, -2.6],
+                  [102.2, -2.3],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {name: "Kabupaten Batang Hari"},
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [102.6, -1.6],
+                  [103.2, -1.5],
+                  [103.1, -2.1],
+                  [102.4, -2.1],
+                  [102.6, -1.6],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {name: "Kabupaten Tanjung Jabung Barat"},
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [102.6, -1.1],
+                  [103.4, -0.9],
+                  [103.3, -1.4],
+                  [102.7, -1.6],
+                  [102.6, -1.1],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {name: "Kota Jambi"},
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [103.55, -1.55],
+                  [103.65, -1.55],
+                  [103.65, -1.65],
+                  [103.55, -1.65],
+                  [103.55, -1.55],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {name: "Kabupaten Muaro Jambi"},
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [103.2, -1.5],
+                  [103.9, -1.3],
+                  [103.8, -1.9],
+                  [103.1, -2.1],
+                  [103.2, -1.5],
+                ],
+              ],
+            },
+          },
+          {
+            type: "Feature",
+            properties: {name: "Kabupaten Tanjung Jabung Timur"},
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [103.9, -1.3],
+                  [104.5, -1.0],
+                  [104.4, -1.6],
+                  [103.8, -1.9],
+                  [103.9, -1.3],
+                ],
+              ],
+            },
+          },
+        ],
+      };
+
+      function styleFeature(feature) {
+        const name = feature.properties.name;
+        const dataWilayah = wilayahData[name] || {warna: "#64748b"};
+        return {
+          fillColor: dataWilayah.warna,
+          weight: 2,
+          opacity: 1,
+          color: "#ffffff",
+          fillOpacity: 0.65,
+        };
+      }
+
+      function onEachFeature(feature, layer) {
+        const name = feature.properties.name;
+        const dataWilayah = wilayahData[name] || {
+          status: "UNKNOWN",
+          info: "Tidak ada data.",
+        };
+
+        // Render Label Nama Kabupaten Secara Permanen
+        layer.bindTooltip(name, {
+          permanent: true,
+          direction: "center",
+          className: "custom-map-label",
+        });
+
+        layer.on({
+          mouseover: (e) => {
+            e.target.setStyle({fillOpacity: 0.9, weight: 3, color: "#67e8f9"});
+          },
+          mouseout: (e) => {
+            geoJsonLayer.resetStyle(e.target);
+          },
+          click: (e) => {
+            map.fitBounds(e.target.getBounds());
+            document.getElementById("dist-name").innerText = name;
+
+            const statusElement = document.getElementById("dist-status");
+            let warnaTeks = "text-slate-400";
+            if (dataWilayah.status === "MERAH")
+              warnaTeks = "text-rose-500 font-bold";
+            if (dataWilayah.status === "KUNING")
+              warnaTeks = "text-amber-500 font-bold";
+            if (dataWilayah.status === "HIJAU")
+              warnaTeks = "text-emerald-500 font-bold";
+
+            statusElement.innerHTML = `Status: <span class="${warnaTeks}">● ${dataWilayah.status}</span>`;
+            document.getElementById("dist-data").innerText = dataWilayah.info;
+
+            layer
+              .bindPopup(
+                `
+              <div class="text-slate-900 font-sans p-1">
+                <strong class="text-sm block border-b pb-1 mb-1">${name}</strong>
+                <span class="text-xs font-bold block mb-1">Kondisi: ${dataWilayah.status}</span>
+                <p class="text-xs text-slate-600">${dataWilayah.info}</p>
+              </div>
+            `
+              )
+              .openPopup();
+          },
+        });
+      }
+
+      const geoJsonLayer = L.geoJSON(jambiGeoJSON, {
+        style: styleFeature,
+        onEachFeature: onEachFeature,
+      }).addTo(map);
+
+      function refreshMapLayout() {
+        setTimeout(() => {
+          map.invalidateSize();
+          map.fitBounds(geoJsonLayer.getBounds());
+        }, 200);
+      }
+
+      // Jalankan Default Tab Saat Pertama Kali Render (Dashboard)
+      switchMainTab("dashboard");
+
+      // ================= DATA FEED REPOSITORI INSTANSI CENTER =================
+      const instansiDatabase = {
+        bps: {
+          title: "BPS PROVINSI JAMBI",
+          status: "🟢 Terhubung",
+          lastSync: "14 Juli 2026, 09:15 WIB",
+          datasetCount: "28 Dataset",
+          endpoint: "https://api.bps.go.id/v2/jambi/economic-feed",
+          datasets: [
+            "Inflasi Kabupaten/Kota",
+            "IHK (Indeks Harga Konsumen)",
+            "Kemiskinan Makro",
+            "PDRB Sektoral",
+            "TPT (Tingkat Pengangguran Terbuka)",
+            "IPM",
+            "Nilai Tukar Petani (NTP)",
+            "Statistik Hortikultura",
+          ],
+          url: "https://jambi.bps.go.id",
+          quality: 98,
+          syncRate: 99,
+        },
+        bi: {
+          title: "BANK INDONESIA (KPw JAMBI)",
+          status: "🟢 Online",
+          lastSync: "14 Juli 2026, 09:00 WIB",
+          datasetCount: "18 Dataset",
+          endpoint: "https://api.bi.go.id/v1/tpid/jambi-indicators",
+          datasets: [
+            "Inflasi Inti Daerah",
+            "Survei Konsumen Mingguan",
+            "Survei Harga Pasar Tradisional",
+            "Matriks Keputusan TPID",
+            "Harga Pangan Harian",
+            "Pasokan Komoditas Strategis",
+          ],
+          url: "https://www.bi.go.id",
+          quality: 99,
+          syncRate: 96,
+        },
+        perindag: {
+          title: "DINAS PERINDAG PROVINSI JAMBI",
+          status: "🟢 Live Feed",
+          lastSync: "Hari ini, 08:00 WIB",
+          datasetCount: "12 Dataset",
+          endpoint: "https://disperindag.jambiprov.go.id/api/v1/market-price",
+          datasets: [
+            "Harga Pasar Induk",
+            "Database Distributor Utama",
+            "Kapasitas & Inventori Gudang",
+            "Log Operasi Pasar Murah",
+            "Volume Pasokan Komoditas",
+            "Peta Rantai Pasok Wilayah",
+          ],
+          url: "https://disperindag.jambiprov.go.id",
+          quality: 95,
+          syncRate: 98,
+        },
+        brida: {
+          title: "BRIDA PROVINSI JAMBI",
+          status: "🟢 Terhubung",
+          lastSync: "Kemarin, 16:30 WIB",
+          datasetCount: "6 Master Model AI",
+          endpoint: "https://brida.jambiprov.go.id/api/research-bank",
+          datasets: [
+            "145 Dokumen Penelitian Ekonomi",
+            "24 Policy Brief Strategis",
+            "31 Kajian Dampak Inflasi Kebijakan",
+            "6 Model Prediksi Harga AI (J-DERP Neural Core)",
+          ],
+          url: "https://jambiprov.go.id",
+          quality: 100,
+          syncRate: 92,
+        },
+        bappeda: {
+          title: "BAPPEDA PROVINSI JAMBI",
+          status: "🟢 Terintegrasi",
+          lastSync: "13 Juli 2026, 11:00 WIB",
+          datasetCount: "4 Program Prioritas Makro",
+          endpoint: "https://bappeda.jambiprov.go.id/api/sdg-economic",
+          datasets: [
+            "Program Pengendalian Inflasi",
+            "Strategi Ketahanan Ekonomi Daerah",
+            "Peta Hilirisasi Agroindustri Lokal",
+            "Matriks Rencana Investasi Daerah",
+          ],
+          url: "https://bappeda.jambiprov.go.id",
+          quality: 97,
+          syncRate: 95,
+        },
+        diskominfo: {
+          title: "DISKOMINFO PROVINSI JAMBI",
+          status: "🟢 Core Node Active",
+          lastSync: "Real-time Stream",
+          datasetCount: "Infrastruktur Node Utama",
+          endpoint: "Gateway Internal Pemprov Cloud Node 1",
+          datasets: [
+            "Server Status: Online (J-DERP Cluster Nodes)",
+            "Beban CPU Infrastruktur: 32%",
+            "Penggunaan RAM System: 45%",
+            "Sisa Penyimpanan Core Storage: 61%",
+            "Kapasitas Jalur Bandwidth: 1.4 Gbps Dedicated",
+          ],
+          url: "https://diskominfo.jambiprov.go.id",
+          quality: 99,
+          syncRate: 100,
+        },
+      };
+
+      function openInstansiDetail(key) {
+        const data = instansiDatabase[key];
+        if (!data) return;
+
+        document.getElementById("flow-source").innerText =
+          key.toUpperCase() + " API Feed";
+
+        let datasetListHtml = "";
+        data.datasets.forEach((item) => {
+          datasetListHtml += `<li class="flex items-center text-xs text-slate-300 gap-2">
+            <span class="text-emerald-400">✓</span> ${item}
+          </li>`;
+        });
+
+        let metricsHtml = "";
+        if (data.quality && data.syncRate) {
+          metricsHtml = `
+            <div class="mt-4 pt-4 border-t border-slate-700/60 space-y-2 text-xs">
+              <div>
+                <div class="flex justify-between mb-1"><span>Data Quality Integrity</span><span class="font-bold">${data.quality}%</span></div>
+                <div class="w-full bg-slate-900 rounded-full h-2"><div class="bg-sky-500 h-2 rounded-full" style="width: ${data.quality}%"></div></div>
+              </div>
+              <div>
+                <div class="flex justify-between mb-1"><span>Sync Stability Rate</span><span class="font-bold">${data.syncRate}%</span></div>
+                <div class="w-full bg-slate-900 rounded-full h-2"><div class="bg-emerald-500 h-2 rounded-full" style="width: ${data.syncRate}%"></div></div>
+              </div>
+            </div>`;
+        }
+
+        document.getElementById("detail-card-info").innerHTML = `
+          <div class="flex justify-between items-start mb-4">
+            <div>
+              <h3 class="text-xl font-bold tracking-wide text-white">${data.title}</h3>
+              <p class="text-xs text-slate-400 font-mono mt-0.5">Endpoint: ${data.endpoint}</p>
+            </div>
+            <span class="px-3 py-1 bg-slate-900 rounded-lg text-xs font-mono font-bold text-emerald-400 border border-emerald-800">${data.status}</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 my-4 p-3 bg-slate-900/60 rounded-xl border border-slate-700/60 text-xs">
+            <div>
+              <span class="text-slate-400 block mb-0.5">Terakhir Sinkronisasi</span>
+              <strong class="text-slate-200 font-mono text-[13px]">${data.lastSync}</strong>
+            </div>
+            <div>
+              <span class="text-slate-400 block mb-0.5">Volume Konektivitas</span>
+              <strong class="text-slate-200 text-[13px]">${data.datasetCount}</strong>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <h4 class="text-sm font-semibold text-slate-300 mb-2">Dataset / Parameter Aktif J-DERP:</h4>
+            <ul class="grid grid-cols-2 gap-x-4 gap-y-2 bg-slate-900/30 p-3 rounded-xl border border-slate-700/40">
+              ${datasetListHtml}
+            </ul>
+          </div>
+
+          ${metricsHtml}
+
+          <div class="flex gap-2 mt-6">
+            <button onclick="alert('Sinkronisasi sukses memperbarui klaster data ${data.title}.')" class="flex-1 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-medium text-xs py-2.5 rounded-xl cursor-pointer transition-all shadow-md">
+              🔄 Sinkronisasi Sekarang
+            </button>
+            <button onclick="alert('Membuka struktur rancangan kamus data (metadata)...')" class="bg-slate-700 hover:bg-slate-600 active:scale-95 text-slate-200 font-medium text-xs px-4 py-2.5 rounded-xl cursor-pointer transition-all border border-slate-600">
+              Lihat Metadata
+            </button>
+          </div>
+        `;
+
+        document.getElementById("detail-card-portal").innerHTML = `
+          <div>
+            <h5 class="text-xs font-bold text-slate-200">Website Resmi Instansi</h5>
+            <span class="text-[11px] text-slate-400 font-mono">${data.url}</span>
+          </div>
+          <button onclick="window.open('${data.url}', '_blank')" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-medium px-3 py-2 rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shadow">
+            🌐 Buka Website
+          </button>
+        `;
+
+        document
+          .getElementById("integration-grid-view")
+          .classList.add("hidden");
+        document
+          .getElementById("integration-detail-view")
+          .classList.remove("hidden");
+      }
+
+      function closeInstansiDetail() {
+        document
+          .getElementById("integration-detail-view")
+          .classList.add("hidden");
+        document
+          .getElementById("integration-grid-view")
+          .classList.remove("hidden");
+      }
+
+      // ================= LOGIKA MINIMIZE & DRAG WIDGET AI =================
+      const chatWidget = document.getElementById("chat-widget");
+      const chatHeader = document.getElementById("chat-widget-header");
+      const chatContent = document.getElementById("chat-widget-content");
+      const minimizeBtn = document.getElementById("minimize-btn");
+
+      let isMinimized = false;
+      minimizeBtn.addEventListener("click", () => {
+        isMinimized = !isMinimized;
+        if (isMinimized) {
+          chatContent.classList.add("hidden");
+          minimizeBtn.innerText = "+";
+          chatWidget.style.width = "180px";
+        } else {
+          chatContent.classList.remove("hidden");
+          minimizeBtn.innerText = "−";
+          chatWidget.style.width = "18rem";
+        }
+      });
+
+      let isDragging = false;
+      let startX, startY, initialLeft, initialTop;
+
+      chatHeader.addEventListener("mousedown", dragStart);
+      window.addEventListener("mousemove", dragMove);
+      window.addEventListener("mouseup", dragEnd);
+
+      chatHeader.addEventListener("touchstart", dragStart, {passive: true});
+      window.addEventListener("touchmove", dragMove, {passive: false});
+      window.addEventListener("touchend", dragEnd);
+
+      function dragStart(e) {
+        if (e.target === minimizeBtn) return;
+        isDragging = true;
+
+        const clientX = e.type.startsWith("touch")
+          ? e.touches[0].clientX
+          : e.clientX;
+        const clientY = e.type.startsWith("touch")
+          ? e.touches[0].clientY
+          : e.clientY;
+
+        startX = clientX;
+        startY = clientY;
+
+        const rect = chatWidget.getBoundingClientRect();
+        initialLeft = rect.left;
+        initialTop = rect.top;
+
+        chatWidget.style.bottom = "auto";
+        chatWidget.style.right = "auto";
+        chatWidget.style.left = initialLeft + "px";
+        chatWidget.style.top = initialTop + "px";
+      }
+
+      function dragMove(e) {
+        if (!isDragging) return;
+        if (e.cancelable) e.preventDefault();
+
+        const clientX = e.type.startsWith("touch")
+          ? e.touches[0].clientX
+          : e.clientX;
+        const clientY = e.type.startsWith("touch")
+          ? e.touches[0].clientY
+          : e.clientY;
+
+        const deltaX = clientX - startX;
+        const deltaY = clientY - startY;
+
+        chatWidget.style.left = initialLeft + deltaX + "px";
+        chatWidget.style.top = initialTop + deltaY + "px";
+      }
+
+      function dragEnd() {
+        isDragging = false;
+      }
+
+      // Logika Interaksi Obrolan Asisten AI
+      const chatDisplay = document.getElementById("chat-messages");
+
+      document.getElementById("send-btn").addEventListener("click", () => {
+        const textInput = document.getElementById("chat-input");
+        const msg = textInput.value.trim();
+        if (msg) {
+          chatDisplay.innerHTML += `<div class="p-1.5 bg-slate-800 rounded-md"><b>Anda:</b> ${msg}</div>`;
+          textInput.value = "";
+
+          setTimeout(() => {
+            chatDisplay.innerHTML += `<div class="p-1.5 bg-slate-900 text-sky-300 border-l border-sky-500"><b>SIGAP:</b> Query integrasi terbaca. Sedang menarik relasi data lintas sektoral Pemprov Jambi...</div>`;
+            chatDisplay.scrollTop = chatDisplay.scrollHeight;
+          }, 300);
+
+          chatDisplay.scrollTop = chatDisplay.scrollHeight;
+        }
+      });
+
+      document.getElementById("recommend-btn").addEventListener("click", () => {
+        chatDisplay.innerHTML += `
+          <div class="p-1.5 bg-amber-950/40 text-amber-200 border-l border-amber-500 text-[11px]">
+            <b>SIGAP:</b> Intervensi Kebijakan: Hasil integrasi BPS & Disperindag menunjukkan anomali cabai rawit merah. Disarankan Bappeda mengaktifkan subsidi logistik pangan melalui BTT (Belanja Tidak Terduga).
+          </div>`;
+        chatDisplay.scrollTop = chatDisplay.scrollHeight;
+      });
+    </script>
+  </body>
+</html>
